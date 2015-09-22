@@ -1,0 +1,25 @@
+{
+    "name": "anvyst/domenus",
+    "description": "API package for Domenus.ru domain registrar",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["domains", "domenus", "registrar"],
+    "authors": [
+        {
+            "name": "anvyst",
+            "email": "jujav4ik@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "monolog/monolog" : "1.*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.0.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Anvyst\\Domenus\\": "src"
+        }
+    }
+}

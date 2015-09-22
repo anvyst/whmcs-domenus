@@ -1,0 +1,8 @@
+production:
+    api_url: "https://api-test.domenus.ru/"
+    api_current: "CURRENT/"
+    api_username: "yourusername"
+    api_password: "yourpassword"
+    api_default_ns: 
+        - "default1.nsserver.com"
+        - "default2.nsserver.com"
