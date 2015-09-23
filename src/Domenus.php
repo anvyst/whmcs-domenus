@@ -6,9 +6,18 @@
  * */
 class Domenus {
 
-    public static $dbh  = null; //db handler
+    /**
+     *  @TODO: in case you want to use Domenus API
+     *  within WHMCS installation, avoiding YAML 
+     *  storage, set $MODE to 'production'.
+     *  Module will be using default credentials
+     *  in the database and configuration.php instead of config.yml
+     * */
+    public static $MODE = 'development';
+
+    /* @var Object $dbh PDO db handler */
+    public static $dbh  = null; 
     
-    public static $MODE = 'production';
 
     /* Domain check flag */
     const DOMAIN_FOR_RENEW      = 1;    /* domain available for renewal */
@@ -18,7 +27,38 @@ class Domenus {
     const DOMAIN_FOR_REGISTER   = 16;   /* if domain is for registration */
     const DOMAIN_FOR_IDPROTECT  = 32;   /* check if id Protect can be requested for domain */
 
-    const RESPONSE_SUCCESS      = 'OK';
+
+    /**
+     *  get_db_connection method
+     *  @return Object self::$dbh of WHMCS database
+     * */
+    public static function get_db_connection() {
+        include dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/configuration.php';
+        
+        self::$dbh = new PDO(
+            "mysql:host={$db_host};dbname={$db_name}",
+            $db_username,
+            $db_password,
+            array(
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'
+            )
+        );
+
+        return self::$dbh;
+    }
+
+
+    /* @return self::$dbh as null killing PDO object */
+    public static function close_db_connection() {
+        self::$dbh = null;
+    }
+
+
+    public static function is_cyrillic($str) {
+        $result = (bool) preg_match('/[\p{Cyrillic}]/u', $str);
+        return $result;
+    }
+
 
     /**
      *  Generic call method to distribute
@@ -44,12 +84,8 @@ class Domenus {
         });
 
         //calling method with the arguments; 
-        $result = $class::$class_method($data);
-        
-        return $result;
+        return $class::$class_method($data);
     }
-
-
 
 
     /**
@@ -81,7 +117,9 @@ class Domenus {
         $configs = yaml_parse(file_get_contents(dirname(dirname(__FILE__)).'/config.yml'));
         
         mb_internal_encoding('UTF-8');
-        
+
+        //@TODO: replace with throw/catch on config with
+        //$MODE lookup 
         if( empty($configs) ) {
             die("No [config.yml] found\n");
         }
@@ -146,7 +184,6 @@ class Domenus {
 
         if( json_decode($data) != null ) { 
             $result = json_decode($data, true);
-
             // got rid off annoying <api-result> array key
             // at the top of the structure
             $result = array_shift($result);
@@ -233,54 +270,14 @@ class Domenus {
     }
 
 
-    public static function get_translit($s) {
-        $t = array(
-            "А"=>"A","Б"=>"B","В"=>"V","Г"=>"G",
-            "Д"=>"D","Е"=>"E","Ё"=>"E","Ж"=>"J","З"=>"Z","И"=>"I",
-            "Й"=>"Y","К"=>"K","Л"=>"L","М"=>"M","Н"=>"N",
-            "О"=>"O","П"=>"P","Р"=>"R","С"=>"S","Т"=>"T",
-            "У"=>"U","Ф"=>"F","Х"=>"H","Ц"=>"Ts","Ч"=>"Ch",
-            "Ш"=>"Sh","Щ"=>"Sch","Ъ"=>"","Ы"=>"Y","Ь"=>"",
-            "Э"=>"E","Ю"=>"Yu","Я"=>"Ya","а"=>"a","б"=>"b",
-            "в"=>"v","г"=>"g","д"=>"d","е"=>"e", "ё"=>"e","ж"=>"j",
-            "з"=>"z","и"=>"i","й"=>"y","к"=>"k","л"=>"l",
-            "м"=>"m","н"=>"n","о"=>"o","п"=>"p","р"=>"r",
-            "с"=>"s","т"=>"t","у"=>"u","ф"=>"f","х"=>"h",
-            "ц"=>"ts","ч"=>"ch","ш"=>"sh","щ"=>"sch","ъ"=>"",
-            "ы"=>"y","ь"=>"","э"=>"e","ю"=>"yu","я"=>"ya"
-        );
 
-        return strtr($s, $t); 
-    }
-
-
-    public static function is_cyrillic($str) {
-        $result = (bool) preg_match('/[\p{Cyrillic}]/u', $str);
-        return $result;
-    }
-
-
-    public static function get_db_connection() {
-        include dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/configuration.php';
-        
-        self::$dbh = new PDO(
-            "mysql:host={$db_host};dbname={$db_name}",
-            $db_username,
-            $db_password,
-            array(
-                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'
-            )
-        );
-
-        return self::$dbh;
-    }
-
-
-    public static function close_db_connection() {
-        self::$dbh = null;
-    }
-
-
+    /**
+     *  get_customfieldvalue method
+     *  @param String $field_name,
+     *  @param String $field_type 
+     *  @param Integer $rel_id
+     *  @return Mixed $result containing record value
+     * */
     public static function get_customfieldvalue($field_name, $field_type, $rel_id) {
 
         $dbh = !self::$dbh ? self::get_db_connection() : self::$dbh;
@@ -297,6 +294,15 @@ class Domenus {
         return $sth->fetchColumn();
     }
 
+
+    /**
+     *  set_customfieldvalue
+     *  @param String $field_name
+     *  @param String $field_type
+     *  @param Integer $rel_id
+     *  @param Mixed $value
+     *  @return Boolean $result
+     * */
     public static function set_customfieldvalue($field_name, $field_type, $rel_id, $value) {
         $result = false;
 
@@ -357,30 +363,11 @@ class Domenus {
             $sql = "UPDATE tbldomainsadditionalfields SET value=:value WHERE domainid=:domainid AND name=:name";
             $sth = $dbh->prepare($sql);
             $result = $sth->execute(array(':value' => $value, ':domainid' => $domain_id, ':name' => $field_name)); 
+        } else {
+            //@TODO: add insert statement
         }
 
         return $result; 
-    }
-
-
-    public static function translit($s) {
-        $t = array(
-           "А"=>"A","Б"=>"B","В"=>"V","Г"=>"G",
-           "Д"=>"D","Е"=>"E","Ё"=>"E","Ж"=>"J","З"=>"Z","И"=>"I",
-           "Й"=>"Y","К"=>"K","Л"=>"L","М"=>"M","Н"=>"N",
-           "О"=>"O","П"=>"P","Р"=>"R","С"=>"S","Т"=>"T",
-           "У"=>"U","Ф"=>"F","Х"=>"H","Ц"=>"Ts","Ч"=>"Ch",
-           "Ш"=>"Sh","Щ"=>"Sch","Ъ"=>"","Ы"=>"Y","Ь"=>"",
-           "Э"=>"E","Ю"=>"Yu","Я"=>"Ya","а"=>"a","б"=>"b",
-           "в"=>"v","г"=>"g","д"=>"d","е"=>"e", "ё"=>"e","ж"=>"j",
-           "з"=>"z","и"=>"i","й"=>"y","к"=>"k","л"=>"l",
-           "м"=>"m","н"=>"n","о"=>"o","п"=>"p","р"=>"r",
-           "с"=>"s","т"=>"t","у"=>"u","ф"=>"f","х"=>"h",
-           "ц"=>"ts","ч"=>"ch","ш"=>"sh","щ"=>"sch","ъ"=>"",
-           "ы"=>"y","ь"=>"","э"=>"e","ю"=>"yu","я"=>"ya"
-        );
-
-        return strtr($s, $t);
     }
 
 }
