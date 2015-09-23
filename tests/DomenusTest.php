@@ -24,5 +24,19 @@ class DomenusTest extends PHPUnit_Framework_TestCase {
         
         $this->assertNotEmpty($result);
     }
+
+    public function test__set_customfieldvalue__returnSuccess() {
+    
+        $result = Domenus::set_customfieldvalue('domenus_registrant', 'client', 140, 'foobar145');
+        $this->assertEquals($result, true);
+    }
+
+
+    public function test__set_domainadditionalfield__returnSuccess() {
+        $order_id  = 123;
+        $params['domainid'] = 15142; 
+        $result = Domenus::set_domainadditionalfield($params['domainid'], 'orderId', $order_id);
+        print_r(var_dump($result));
+    }
 }
 ?>
