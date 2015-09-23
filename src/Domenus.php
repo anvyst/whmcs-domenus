@@ -124,7 +124,7 @@ class Domenus {
             die("No [config.yml] found\n");
         }
 
-        $full_url = $configs[self::$MODE]['api_url'] . $configs[self::$MODE]['api_current'] . $method;
+        $full_url = $configs[self::$MODE]['api_url'] . $method;
 
 
         //passing login credentials in each request
@@ -308,24 +308,29 @@ class Domenus {
 
         $dbh = !self::$dbh ? self::get_db_connection() : self::$dbh;
 
+        $sth = $dbh->prepare("SELECT * FROM tblcustomfields WHERE type=? AND fieldname=?");
+        $sth->execute(array($field_type, $field_name));
+
+        $domenus_registrant = $sth->fetch(PDO::FETCH_ASSOC);
+
+
         $sql = "SELECT f.*,v.* 
             FROM tblcustomfields AS f LEFT JOIN tblcustomfieldsvalues AS v ON v.fieldid = f.id 
-            WHERE f.type=:field_type 
-            AND f.fieldname=:field_name 
-            AND v.relid=:rel_id";
-
+            WHERE f.type=? 
+            AND f.fieldname=? 
+            AND v.relid=?";
         $sth = $dbh->prepare($sql);
-        $sth->execute(array(':field_type' => $field_type,':field_name' => $field_name, ':relid' => $rel_id));
-
+        
+        //$sth->execute(array(':field_type' => $field_type,':field_name' => $field_name, ':relid' => $rel_id));
+        $sth->execute(array($field_type,$field_name, $rel_id));
+        
         $customfield = $sth->fetch(PDO::FETCH_ASSOC);
-
-
-        if( empty($customfield['value']) || is_null($customfield['value']) ) {
+        if( $customfield == false  ) {
             $sql = "INSERT INTO tblcustomfieldsvalues(fieldid, relid, value) VALUES(:fieldid, :relid, :value)";
             $sth = $dbh->prepare($sql);
-            $result = $sth->execute(array(':fieldid' => $customfield['id'], ':relid' => $rel_id, ':value' => $value));
-        
+            $result = $sth->execute(array(':fieldid' => $domenus_registrant['id'], ':relid' => $rel_id, ':value' => $value));
         } else {
+            
             $sql = "UPDATE tblcustomfieldsvalues SET value=:value WHERE fieldid=:fieldid AND relid=:relid";
             $sth = $dbh->prepare($sql);
             $result = $sth->execute(array(':value' => $value, ':fieldid' => $customfield['id'], ':relid' => $rel_id));
@@ -358,16 +363,43 @@ class Domenus {
         $dbh = !self::$dbh ? self::get_db_connection() : self::$dbh;
 
         $record = self::get_domainadditionalfield($domain_id, $field_name);
-
+        
         if( !empty($record) && !empty($record['value']) ) {
             $sql = "UPDATE tbldomainsadditionalfields SET value=:value WHERE domainid=:domainid AND name=:name";
             $sth = $dbh->prepare($sql);
             $result = $sth->execute(array(':value' => $value, ':domainid' => $domain_id, ':name' => $field_name)); 
         } else {
-            //@TODO: add insert statement
+            $sth = $dbh->prepare("INSERT INTO tbldomainsadditionalfields(domainid,name,value) VALUES(?,?,?)");
+            $result = $sth->execute(array($domain_id, $field_name, $value));
         }
 
         return $result; 
     }
 
+
+    /**
+     *  translit method
+     *  Transliterate Russian into English
+     *  @param String $
+     *  @return String converted into translit
+     * */
+    public static function translit($s) {
+        $t = array(
+           "А"=>"A","Б"=>"B","В"=>"V","Г"=>"G",
+           "Д"=>"D","Е"=>"E","Ё"=>"E","Ж"=>"J","З"=>"Z","И"=>"I",
+           "Й"=>"Y","К"=>"K","Л"=>"L","М"=>"M","Н"=>"N",
+           "О"=>"O","П"=>"P","Р"=>"R","С"=>"S","Т"=>"T",
+           "У"=>"U","Ф"=>"F","Х"=>"H","Ц"=>"Ts","Ч"=>"Ch",
+           "Ш"=>"Sh","Щ"=>"Sch","Ъ"=>"","Ы"=>"Y","Ь"=>"",
+           "Э"=>"E","Ю"=>"Yu","Я"=>"Ya","а"=>"a","б"=>"b",
+           "в"=>"v","г"=>"g","д"=>"d","е"=>"e", "ё"=>"e","ж"=>"j",
+           "з"=>"z","и"=>"i","й"=>"y","к"=>"k","л"=>"l",
+           "м"=>"m","н"=>"n","о"=>"o","п"=>"p","р"=>"r",
+           "с"=>"s","т"=>"t","у"=>"u","ф"=>"f","х"=>"h",
+           "ц"=>"ts","ч"=>"ch","ш"=>"sh","щ"=>"sch","ъ"=>"",
+           "ы"=>"y","ь"=>"","э"=>"e","ю"=>"yu","я"=>"ya"
+        );
+
+        return strtr($s, $t);
+    } 
 }
