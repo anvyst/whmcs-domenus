@@ -219,9 +219,11 @@ function prepare_ns_servers($params = []) {
 
 function domenus_getConfigArray() {
     return array(
-        'Url'       => array('Type' => 'text', 'Size' => '50', 'Description' => 'Enter your API URL'),  
-        'Username'  => array('Type' => 'text', 'Size' => '30', 'Description' => 'Enter your username'),
-        'Password'  => array('Type' => 'password', 'Size' => '30', 'Description' => 'Enter your password'),
+        'Url'           => array('Type' => 'text', 'Size' => '50', 'Description' => 'Enter your API URL'),  
+        'Username'      => array('Type' => 'text', 'Size' => '30', 'Description' => 'Enter your username'),
+        'Password'      => array('Type' => 'password', 'Size' => '30', 'Description' => 'Enter your password'),
+        'DefaultNs'     => array('Type' => 'text', 'Size' => '200', 'Description' => 'Default NS servers, comma separated'),
+        'TestMode'      => array('Type' => 'yesno'), // starts looking for config.yml in the registrars folder for test credentials
     );
 }
 
